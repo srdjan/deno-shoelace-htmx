@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Management</title>
+
+  <!-- HTMX for declarative AJAX -->
+  <script src="https://unpkg.com/htmx.org@1.9.9"></script>
+
+  <!-- Shoelace Web Components -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css" />
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace.js"></script>
+
+  <style>
+    :root {
+      --sl-color-primary-500: #2563eb;
+      --sl-color-primary-600: #1d4ed8;
+      --sl-color-success-500: #10b981;
+      --sl-color-danger-500: #ef4444;
+    }
+
+    body {
+      font-family: var(--sl-font-sans);
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: var(--sl-color-neutral-900);
+    }
+
+    .app-container {
+      display: grid;
+      gap: 2rem;
+    }
+
+    .task-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-radius: var(--sl-border-radius-medium);
+      background-color: var(--sl-color-neutral-50);
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .task-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .task-form {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    .spinner-container {
+      display: none;
+    }
+
+    [data-htmx-request] .spinner-container {
+      display: inline-flex;
+    }
+
+    .task-complete {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+    <header>
+      <sl-card>
+        <div slot="header">
+          <h1>Task Management</h1>
+        </div>
+
+        <p>A minimal task manager built with Shoelace Web Components and HTMX.</p>
+      </sl-card>
+    </header>
+
+    <!-- New Task Form with HTMX -->
+    <section>
+      <sl-card>
+        <div slot="header">
+          <h2>Add New Task</h2>
+        </div>
+
+        <form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="submit"
+          hx-indicator=".spinner-container">
+
+          <sl-input name="title" required placeholder="What needs to be done?"></sl-input>
+
+          <sl-textarea name="description" placeholder="Add details (optional)"></sl-textarea>
+
+          <sl-select name="priority" placeholder="Select priority">
+            <sl-option value="low">Low</sl-option>
+            <sl-option value="medium">Medium</sl-option>
+            <sl-option value="high">High</sl-option>
+          </sl-select>
+
+          <div class="form-actions">
+            <div class="spinner-container">
+              <sl-spinner></sl-spinner> Processing...
+            </div>
+
+            <sl-button type="reset" variant="neutral">Clear</sl-button>
+            <sl-button type="submit" variant="primary">Add Task</sl-button>
+          </div>
+        </form>
+      </sl-card>
+    </section>
+
+    <!-- Task List Container -->
+    <section>
+      <sl-card>
+        <div slot="header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Your Tasks</h2>
+            <sl-button size="small" variant="neutral" hx-get="/api/tasks" hx-target="#task-list" hx-trigger="click"
+              hx-indicator=".refresh-spinner">
+              <sl-icon slot="prefix" name="arrow-clockwise"></sl-icon>
+              Refresh
+              <span class="refresh-spinner" style="display: none;">
+                <sl-spinner style="font-size: 1em;"></sl-spinner>
+              </span>
+            </sl-button>
+          </div>
+        </div>
+
+        <!-- Task Filtering -->
+        <div style="margin-bottom: 1.5rem;">
+          <sl-button-group label="Filter tasks">
+            <sl-button hx-get="/api/tasks" hx-target="#task-list" hx-indicator=".refresh-spinner" variant="default">
+              All
+            </sl-button>
+            <sl-button hx-get="/api/tasks?status=active" hx-target="#task-list" hx-indicator=".refresh-spinner"
+              variant="default">
+              Active
+            </sl-button>
+            <sl-button hx-get="/api/tasks?status=completed" hx-target="#task-list" hx-indicator=".refresh-spinner"
+              variant="default">
+              Completed
+            </sl-button>
+          </sl-button-group>
+        </div>
+
+        <!-- Tasks will be loaded here -->
+        <div id="task-list" class="task-list">
+          <!-- Task Item Example (this would be returned from the server) -->
+          <div id="task-1" class="task-item">
+            <div>
+              <sl-checkbox hx-put="/api/tasks/1/toggle" hx-trigger="change" hx-swap="outerHTML" hx-target="#task-1">
+                <span>Complete the project setup</span>
+              </sl-checkbox>
+              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
+                Initial setup for the Shoelace and HTMX demo
+              </div>
+            </div>
+
+            <div>
+              <sl-badge variant="primary">Medium</sl-badge>
+              <sl-dropdown>
+                <sl-button slot="trigger" size="small" variant="neutral" circle>
+                  <sl-icon name="three-dots-vertical"></sl-icon>
+                </sl-button>
+                <sl-menu>
+                  <sl-menu-item hx-get="/api/tasks/1/edit" hx-target="#task-1" hx-swap="outerHTML">
+                    <sl-icon slot="prefix" name="pencil"></sl-icon>
+                    Edit
+                  </sl-menu-item>
+                  <sl-menu-item hx-delete="/api/tasks/1" hx-target="#task-1" hx-swap="outerHTML"
+                    hx-confirm="Are you sure you want to delete this task?">
+                    <sl-icon slot="prefix" name="trash"></sl-icon>
+                    Delete
+                  </sl-menu-item>
+                </sl-menu>
+              </sl-dropdown>
+            </div>
+          </div>
+
+          <!-- Completed Task Example -->
+          <div id="task-2" class="task-item">
+            <div>
+              <sl-checkbox checked hx-put="/api/tasks/2/toggle" hx-trigger="change" hx-swap="outerHTML"
+                hx-target="#task-2">
+                <span class="task-complete">Research Web Components</span>
+              </sl-checkbox>
+              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
+                Look into Shoelace and other component libraries
+              </div>
+            </div>
+
+            <div>
+              <sl-badge variant="success">Low</sl-badge>
+              <sl-dropdown>
+                <sl-button slot="trigger" size="small" variant="neutral" circle>
+                  <sl-icon name="three-dots-vertical"></sl-icon>
+                </sl-button>
+                <sl-menu>
+                  <sl-menu-item hx-get="/api/tasks/2/edit" hx-target="#task-2" hx-swap="outerHTML">
+                    <sl-icon slot="prefix" name="pencil"></sl-icon>
+                    Edit
+                  </sl-menu-item>
+                  <sl-menu-item hx-delete="/api/tasks/2" hx-target="#task-2" hx-swap="outerHTML"
+                    hx-confirm="Are you sure you want to delete this task?">
+                    <sl-icon slot="prefix" name="trash"></sl-icon>
+                    Delete
+                  </sl-menu-item>
+                </sl-menu>
+              </sl-dropdown>
+            </div>
+          </div>
+
+          <!-- High Priority Task Example -->
+          <div id="task-3" class="task-item">
+            <div>
+              <sl-checkbox hx-put="/api/tasks/3/toggle" hx-trigger="change" hx-swap="outerHTML" hx-target="#task-3">
+                <span>Implement server endpoints</span>
+              </sl-checkbox>
+              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
+                Create the API for task management
+              </div>
+            </div>
+
+            <div>
+              <sl-badge variant="danger">High</sl-badge>
+              <sl-dropdown>
+                <sl-button slot="trigger" size="small" variant="neutral" circle>
+                  <sl-icon name="three-dots-vertical"></sl-icon>
+                </sl-button>
+                <sl-menu>
+                  <sl-menu-item hx-get="/api/tasks/3/edit" hx-target="#task-3" hx-swap="outerHTML">
+                    <sl-icon slot="prefix" name="pencil"></sl-icon>
+                    Edit
+                  </sl-menu-item>
+                  <sl-menu-item hx-delete="/api/tasks/3" hx-target="#task-3" hx-swap="outerHTML"
+                    hx-confirm="Are you sure you want to delete this task?">
+                    <sl-icon slot="prefix" name="trash"></sl-icon>
+                    Delete
+                  </sl-menu-item>
+                </sl-menu>
+              </sl-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <sl-alert variant="neutral" open style="display: none;">
+          <sl-icon slot="icon" name="info-circle"></sl-icon>
+          No tasks found. Add your first task above.
+        </sl-alert>
+      </sl-card>
+    </section>
+  </div>
+
+  <!-- Task Edit Dialog Template (would be returned from server) -->
+  <template id="edit-form-template">
+    <form class="task-form edit-task-form" hx-put="/api/tasks/{id}" hx-target="#{id}" hx-swap="outerHTML">
+
+      <sl-input name="title" required placeholder="Task title" value="{title}"></sl-input>
+
+      <sl-textarea name="description" placeholder="Description" value="{description}"></sl-textarea>
+
+      <sl-select name="priority" placeholder="Select priority" value="{priority}">
+        <sl-option value="low">Low</sl-option>
+        <sl-option value="medium">Medium</sl-option>
+        <sl-option value="high">High</sl-option>
+      </sl-select>
+
+      <div class="form-actions">
+        <sl-button type="button" variant="neutral" hx-get="/api/tasks/{id}" hx-target="#{id}" hx-swap="outerHTML">
+          Cancel
+        </sl-button>
+        <sl-button type="submit" variant="primary">Save</sl-button>
+      </div>
+    </form>
+  </template>
+
+  <script>
+    // Optional minimal JavaScript for enhancing the HTMX experience
+    document.addEventListener('DOMContentLoaded', () => {
+      // Add event listener for HTMX after request events
+      document.body.addEventListener('htmx:afterRequest', (event) => {
+        // Show toast notifications on successful actions
+        if (event.detail.successful) {
+          // Create a toast notification
+          const toast = Object.assign(document.createElement('sl-toast'), {
+            variant: 'primary',
+            duration: 3000,
+            closable: true
+          });
+
+          // Set toast content based on the request
+          const path = event.detail.pathInfo.requestPath;
+
+          if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'POST') {
+            toast.innerText = 'Task added successfully';
+          } else if (path.includes('/toggle')) {
+            toast.innerText = 'Task status updated';
+          } else if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'PUT') {
+            toast.innerText = 'Task updated successfully';
+          } else if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'DELETE') {
+            toast.variant = 'danger';
+            toast.innerText = 'Task deleted';
+          }
+
+          // Show the toast
+          if (toast.innerText) {
+            document.body.appendChild(toast);
+            toast.show();
+          }
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
