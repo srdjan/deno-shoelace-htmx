@@ -108,7 +108,7 @@
           <h2>Add New Task</h2>
         </div>
 
-        <form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="submit"
+        <sl-form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="sl-submit"
           hx-indicator=".spinner-container">
 
           <sl-input name="title" required placeholder="What needs to be done?"></sl-input>
@@ -129,7 +129,7 @@
             <sl-button type="reset" variant="neutral">Clear</sl-button>
             <sl-button type="submit" variant="primary">Add Task</sl-button>
           </div>
-        </form>
+        </sl-form>
       </sl-card>
     </section>
 
@@ -194,41 +194,60 @@
   <script>
     // Optional minimal JavaScript for enhancing the HTMX experience
     document.addEventListener('DOMContentLoaded', () => {
-      // Add event listener for HTMX after request events
-      document.body.addEventListener('htmx:afterRequest', (event) => {
-        // Show toast notifications on successful actions
-        if (event.detail.successful) {
-          // Create a toast notification
-          const toast = Object.assign(document.createElement('sl-toast'), {
-            variant: 'primary',
-            duration: 3000,
-            closable: true
-          });
-
-          // Set toast content based on the request
-          const requestPath = event.detail.pathInfo?.requestPath;
-          const requestMethod = event.detail.requestConfig?.method;
-
-          if (requestPath && requestMethod) {
-            if (requestPath.includes('/api/tasks') && requestMethod === 'POST') {
-              toast.innerText = 'Task added successfully';
-            } else if (requestPath.includes('/toggle')) {
-              toast.innerText = 'Task status updated';
-            } else if (requestPath.includes('/api/tasks') && requestMethod === 'PUT') {
-              toast.innerText = 'Task updated successfully';
-            } else if (requestPath.includes('/api/tasks') && requestMethod === 'DELETE') {
-              toast.variant = 'danger';
-              toast.innerText = 'Task deleted';
-            }
-          }
-
-          // Show the toast
-          if (toast.innerText) {
-            document.body.appendChild(toast);
-            toast.show();
-          }
+      // Generic error handler for HTMX requests (optional, but good for debugging)
+      document.body.addEventListener('htmx:responseError', function (evt) {
+        console.error("HTMX Response Error:", evt.detail.error, "From:", evt.detail.xhr);
+        // Optionally show a generic error toast for network/server errors not handled by specific HTML responses
+        // Ensure this doesn't conflict with HTML error responses from the server.
+        if (!evt.detail.xhr.responseText.includes('<sl-alert')) { // Avoid double-toasting if server sent an HTML error
+            const errorToast = Object.assign(document.createElement('sl-toast'), {
+                variant: 'danger',
+                duration: 5000,
+                closable: true,
+                innerText: `Request failed: ${evt.detail.error || evt.detail.xhr.statusText || 'Unknown error'}`
+            });
+            document.body.appendChild(errorToast);
+            errorToast.show();
         }
       });
+
+      // Function to create and show a toast
+      function showToast(message, variant = 'primary', duration = 3000) {
+        const toast = Object.assign(document.createElement('sl-toast'), {
+          variant: variant,
+          duration: duration,
+          closable: true,
+          innerHTML: message // innerHTML to allow icons or other HTML in message if needed
+        });
+        document.body.appendChild(toast);
+        // It's important to remove the toast from the DOM after it hides to prevent buildup
+        toast.addEventListener('sl-after-hide', () => {
+          toast.remove();
+        });
+        toast.show();
+      }
+
+      // Event listeners for server-sent HX-Trigger events
+      document.body.addEventListener('show-toast-task-created', () => {
+        showToast('Task added successfully!', 'success'); // Changed variant to success for create
+      });
+
+      document.body.addEventListener('show-toast-task-updated', () => {
+        showToast('Task updated successfully.', 'primary');
+      });
+
+      document.body.addEventListener('show-toast-task-toggled', () => {
+        showToast('Task status updated.', 'neutral'); // Changed variant to neutral
+      });
+
+      document.body.addEventListener('show-toast-task-deleted', () => {
+        showToast('Task deleted.', 'danger');
+      });
+
+      // The old htmx:afterRequest listener is removed as per instructions
+      // document.body.addEventListener('htmx:afterRequest', (event) => {
+      //   // ... old logic was here ...
+      // });
     });
   </script>
 </body>
