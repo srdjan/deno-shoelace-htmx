@@ -1,5 +1,13 @@
 {
-  "version": "4",
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/html@*": "1.0.3"
+  },
+  "jsr": {
+    "@std/html@1.0.3": {
+      "integrity": "7a0ac35e050431fb49d44e61c8b8aac1ebd55937e0dc9ec6409aa4bab39a7988"
+    }
+  },
   "remote": {
     "https://deno.land/std@0.221.0/assert/assert.ts": "bec068b2fccdd434c138a555b19a2c2393b71dfaada02b7d568a01541e67cdc5",
     "https://deno.land/std@0.221.0/assert/assertion_error.ts": "9f689a101ee586c4ce92f52fa7ddd362e86434ffdf1f848e45987dc7689976b8",

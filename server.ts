@@ -2,7 +2,7 @@
 import { serveFile } from "https://deno.land/std@0.221.0/http/file_server.ts";
 import { extname } from "https://deno.land/std@0.221.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.221.0/media_types/content_type.ts";
-import { htmlEscape } from "https://deno.land/x/html_escape@v1.1.5/html_escape.ts";
+import { htmlEscape } from "./html_utils.ts";
 
 // Type definitions
 type TaskId = string;
