@@ -2,7 +2,9 @@
 import { serveFile } from "https://deno.land/std@0.221.0/http/file_server.ts";
 import { extname } from "https://deno.land/std@0.221.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.221.0/media_types/content_type.ts";
-import { htmlEscape } from "./html_utils.ts";
+
+import { htmlEscape } from "https://deno.land/x/html_escape@v1.1.5/html_escape.ts";
+import { ShoelaceHTMX } from "./shoelace_htmx_library.ts"; // Import the new library
 
 // Type definitions
 type TaskId = string;
@@ -200,14 +202,15 @@ const taskToHtml = (task: Task): string => {
   return `
     <div id="task-${htmlEscape(task.id)}" class="task-item">
       <div>
-        <sl-checkbox
-          ${task.completed ? "checked" : ""}
-          hx-put="/api/tasks/${htmlEscape(task.id)}/toggle"
-          hx-trigger="sl-change"
-          hx-swap="outerHTML"
-          hx-target="#task-${htmlEscape(task.id)}">
-          <span class="${taskClass}">${htmlEscape(task.title)}</span>
-        </sl-checkbox>
+        ${ShoelaceHTMX.renderCheckbox({
+          label: task.title, // The library will escape this
+          checked: task.completed,
+          class: taskClass, // Apply taskClass to the <sl-checkbox> host element
+          hxPut: `/api/tasks/${task.id}/toggle`,
+          hxTarget: `#task-${task.id}`,
+          hxSwap: "outerHTML"
+          // hx-trigger="sl-change" is automatically added by renderCheckbox
+        })}
         <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
           ${htmlEscape(task.description)}
         </div>
@@ -254,15 +257,19 @@ const taskEditFormHtml = (task: Task): string => {
       </sl-select>
       
       <div class="form-actions">
-        <sl-button 
-          type="button" 
-          variant="neutral"
-          hx-get="/api/tasks/${htmlEscape(task.id)}"
-          hx-target="#task-${htmlEscape(task.id)}"
-          hx-swap="outerHTML">
-          Cancel
-        </sl-button>
-        <sl-button type="submit" variant="primary">Save</sl-button>
+        ${ShoelaceHTMX.renderButton({
+          label: "Cancel",
+          type: "button",
+          variant: "neutral",
+          hxGet: `/api/tasks/${task.id}`, // task.id is passed directly
+          hxTarget: `#task-${task.id}`,    // task.id is passed directly
+          hxSwap: "outerHTML"
+        })}
+        ${ShoelaceHTMX.renderButton({
+          label: "Save",
+          type: "submit",
+          variant: "primary"
+        })}
       </div>
     </form>
   `;
