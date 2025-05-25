@@ -203,7 +203,7 @@ const taskToHtml = (task: Task): string => {
         <sl-checkbox
           ${task.completed ? "checked" : ""}
           hx-put="/api/tasks/${htmlEscape(task.id)}/toggle"
-          hx-trigger="change"
+          hx-trigger="sl-change"
           hx-swap="outerHTML"
           hx-target="#task-${htmlEscape(task.id)}">
           <span class="${taskClass}">${htmlEscape(task.title)}</span>
@@ -456,9 +456,12 @@ async function createTaskHandler(req: Request): Promise<Response> {
 
 
     const newTask = taskService.createTask(taskData);
-    return new Response(taskToHtml(newTask), {
-      headers: { ...DEFAULT_CORS_HEADERS, "Content-Type": "text/html" }
-    });
+    const headers = { 
+      ...DEFAULT_CORS_HEADERS, 
+      "Content-Type": "text/html",
+      "HX-Trigger": "show-toast-task-created" 
+    };
+    return new Response(taskToHtml(newTask), { headers });
   } catch (e) {
     // Check if it's an error from our validation
     if (e.message.startsWith("Invalid task data:")) {
@@ -500,9 +503,12 @@ async function updateTaskHandler(req: Request, id: TaskId): Promise<Response> {
       // This case is hit if service.updateTask returns undefined (e.g. task not found before validation)
       return htmlErrorResponse("Task not found.", 404);
     }
-    return new Response(taskToHtml(updatedTask), {
-      headers: { ...DEFAULT_CORS_HEADERS, "Content-Type": "text/html" }
-    });
+    const headers = { 
+      ...DEFAULT_CORS_HEADERS, 
+      "Content-Type": "text/html",
+      "HX-Trigger": "show-toast-task-updated" 
+    };
+    return new Response(taskToHtml(updatedTask), { headers });
   } catch (e) {
      // Check if it's an error from our validation in TaskService
     if (e.message.startsWith("Invalid task data:")) {
@@ -524,9 +530,13 @@ async function deleteTaskHandler(req: Request, id: TaskId): Promise<Response> {
   if (!success) {
     return jsonErrorResponse("Task not found or could not be deleted.", 404);
   }
+  const headers = { 
+    ...DEFAULT_CORS_HEADERS,
+    "HX-Trigger": "show-toast-task-deleted" 
+  };
   return new Response(null, { // Success, no content
     status: 204, 
-    headers: DEFAULT_CORS_HEADERS // Ensure CORS headers even for 204
+    headers
   });
 }
 
@@ -545,9 +555,12 @@ async function toggleTaskHandler(req: Request, id: TaskId): Promise<Response> {
   if (!updatedTask) {
     return htmlErrorResponse("Task not found.", 404);
   }
-  return new Response(taskToHtml(updatedTask), {
-    headers: { ...DEFAULT_CORS_HEADERS, "Content-Type": "text/html" }
-  });
+  const headers = { 
+    ...DEFAULT_CORS_HEADERS, 
+    "Content-Type": "text/html",
+    "HX-Trigger": "show-toast-task-toggled" 
+  };
+  return new Response(taskToHtml(updatedTask), { headers });
 }
 
 // Initialize
