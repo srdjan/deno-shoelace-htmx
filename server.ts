@@ -2,6 +2,7 @@
 import { serveFile } from "https://deno.land/std@0.221.0/http/file_server.ts";
 import { extname } from "https://deno.land/std@0.221.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.221.0/media_types/content_type.ts";
+import { escape as htmlEscape } from "jsr:@std/html/entities";
 
 import { htmlEscape } from "https://deno.land/x/html_escape@v1.1.5/html_escape.ts";
 import { ShoelaceHTMX } from "./shoelace_htmx_library.ts"; // Import the new library
@@ -51,7 +52,7 @@ class TaskService {
         priority: "high",
       },
     ];
-    
+
     // Seed with specific IDs and completion status for consistency with original seed data
     this.createTask(initialTasksData[0], "1", false, new Date());
     this.createTask(initialTasksData[1], "2", true, new Date(Date.now() - 86400000));
@@ -88,14 +89,10 @@ class TaskService {
       throw new Error(`Invalid task data: Priority must be one of ${TASK_PRIORITIES.join(", ")}.`);
     }
     if (typeof data.description !== 'string') {
-        throw new Error("Invalid task data: Description must be a string.");
+      throw new Error("Invalid task data: Description must be a string.");
     }
 
-    // Allow seeding without re-validating priority from seed data, as it's controlled internally.
-    // However, external calls (without id) must validate priority.
-    if (!id && !TASK_PRIORITIES.includes(data.priority)) {
-        throw new Error(`Invalid task data: Priority must be one of ${TASK_PRIORITIES.join(", ")}.`);
-    }
+    // Priority validation already done above for all cases
 
 
     const newId = id || (this.nextId++).toString();
@@ -127,7 +124,7 @@ class TaskService {
       throw new Error(`Invalid task data: Priority must be one of ${TASK_PRIORITIES.join(", ")}.`);
     }
     if (data.description !== undefined && typeof data.description !== 'string') {
-        throw new Error("Invalid task data: Description must be a string.");
+      throw new Error("Invalid task data: Description must be a string.");
     }
 
     const updatedTask: Task = {
@@ -202,6 +199,14 @@ const taskToHtml = (task: Task): string => {
   return `
     <div id="task-${htmlEscape(task.id)}" class="task-item">
       <div>
+        <sl-checkbox
+          ${task.completed ? "checked" : ""}
+          hx-put="/api/tasks/${htmlEscape(task.id)}/toggle"
+          hx-trigger="change"
+          hx-swap="outerHTML"
+          hx-target="#task-${htmlEscape(task.id)}">
+          <span class="${taskClass}">${htmlEscape(task.title)}</span>
+        </sl-checkbox>
         ${ShoelaceHTMX.renderCheckbox({
           label: task.title, // The library will escape this
           checked: task.completed,
@@ -215,7 +220,7 @@ const taskToHtml = (task: Task): string => {
           ${htmlEscape(task.description)}
         </div>
       </div>
-      
+
       <div>
         <sl-badge variant="${badgeVariant}">${htmlEscape(task.priority)}</sl-badge>
         <sl-dropdown>
@@ -245,18 +250,27 @@ const taskEditFormHtml = (task: Task): string => {
           hx-put="/api/tasks/${htmlEscape(task.id)}"
           hx-target="#task-${htmlEscape(task.id)}"
           hx-swap="outerHTML">
-      
+
       <sl-input name="title" required placeholder="Task title" value="${htmlEscape(task.title)}"></sl-input>
-      
+
       <sl-textarea name="description" placeholder="Description">${htmlEscape(task.description)}</sl-textarea>
-      
+
       <sl-select name="priority" placeholder="Select priority" value="${htmlEscape(task.priority)}">
         <sl-option value="low">Low</sl-option>
         <sl-option value="medium">Medium</sl-option>
         <sl-option value="high">High</sl-option>
       </sl-select>
-      
+
       <div class="form-actions">
+        <sl-button
+          type="button"
+          variant="neutral"
+          hx-get="/api/tasks/${htmlEscape(task.id)}"
+          hx-target="#task-${htmlEscape(task.id)}"
+          hx-swap="outerHTML">
+          Cancel
+        </sl-button>
+        <sl-button type="submit" variant="primary">Save</sl-button>
         ${ShoelaceHTMX.renderButton({
           label: "Cancel",
           type: "button",
@@ -332,9 +346,9 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   if (path === "/" || !path.startsWith("/api")) {
-    return serveStaticFile(req, path);
+    return await serveStaticFile(req, path);
   } else {
-    return handleApiRequest(req, path, method);
+    return await handleApiRequest(req, path, method);
   }
 }
 
@@ -389,7 +403,7 @@ async function handleApiRequest(req: Request, path: string, method: string): Pro
 
   // POST /api/tasks - Create a new task
   if (path === "/api/tasks" && method === "POST") {
-    return createTaskHandler(req);
+    return await createTaskHandler(req);
   }
 
   // GET /api/tasks/:id - Get a single task
@@ -401,7 +415,7 @@ async function handleApiRequest(req: Request, path: string, method: string): Pro
   // PUT /api/tasks/:id - Update a task
   if (path.match(/^\/api\/tasks\/\w+$/) && method === "PUT") {
     const params = getPathParams("/api/tasks/:id", path);
-    return updateTaskHandler(req, params.id);
+    return await updateTaskHandler(req, params.id);
   }
 
   // DELETE /api/tasks/:id - Delete a task
@@ -427,7 +441,7 @@ async function handleApiRequest(req: Request, path: string, method: string): Pro
 
 // --- API Endpoint Handlers ---
 
-async function getTasksHandler(req: Request, url: URL): Promise<Response> {
+function getTasksHandler(_req: Request, url: URL): Response {
   const status = url.searchParams.get("status") as TaskStatus | null;
   const filteredTasks = taskService.getAllTasks(status);
 
@@ -457,21 +471,21 @@ async function createTaskHandler(req: Request): Promise<Response> {
       priority: (formData.get("priority")?.toString() || "medium") as TaskPriority, // Default for now
     };
     // Ensure priority is explicitly set if not provided by form, or let service validate
-     if (!formData.has("priority")) {
-        taskData.priority = "medium"; // Or handle as potentially invalid if desired
+    if (!formData.has("priority")) {
+      taskData.priority = "medium"; // Or handle as potentially invalid if desired
     }
 
 
     const newTask = taskService.createTask(taskData);
-    const headers = { 
-      ...DEFAULT_CORS_HEADERS, 
+    const headers = {
+      ...DEFAULT_CORS_HEADERS,
       "Content-Type": "text/html",
-      "HX-Trigger": "show-toast-task-created" 
+      "HX-Trigger": "show-toast-task-created"
     };
     return new Response(taskToHtml(newTask), { headers });
   } catch (e) {
     // Check if it's an error from our validation
-    if (e.message.startsWith("Invalid task data:")) {
+    if (e instanceof Error && e.message.startsWith("Invalid task data:")) {
       return htmlErrorResponse(e.message, 400);
     }
     // Generic error for other cases (e.g., parseFormData failure)
@@ -480,7 +494,7 @@ async function createTaskHandler(req: Request): Promise<Response> {
   }
 }
 
-async function getTaskByIdHandler(req: Request, id: TaskId): Promise<Response> {
+function getTaskByIdHandler(_req: Request, id: TaskId): Response {
   const task = taskService.getTaskById(id);
   if (!task) {
     return htmlErrorResponse("Task not found.", 404);
@@ -510,20 +524,20 @@ async function updateTaskHandler(req: Request, id: TaskId): Promise<Response> {
       // This case is hit if service.updateTask returns undefined (e.g. task not found before validation)
       return htmlErrorResponse("Task not found.", 404);
     }
-    const headers = { 
-      ...DEFAULT_CORS_HEADERS, 
+    const headers = {
+      ...DEFAULT_CORS_HEADERS,
       "Content-Type": "text/html",
-      "HX-Trigger": "show-toast-task-updated" 
+      "HX-Trigger": "show-toast-task-updated"
     };
     return new Response(taskToHtml(updatedTask), { headers });
   } catch (e) {
-     // Check if it's an error from our validation in TaskService
-    if (e.message.startsWith("Invalid task data:")) {
+    // Check if it's an error from our validation in TaskService
+    if (e instanceof Error && e.message.startsWith("Invalid task data:")) {
       return htmlErrorResponse(e.message, 400);
     }
     // This would be for a case where TaskService.updateTask itself throws "Task not found"
     // Currently, it returns undefined if task isn't found initially, handled above.
-    // if (e.message === "Task not found") { 
+    // if (e instanceof Error && e.message === "Task not found") {
     //     return htmlErrorResponse("Task not found.", 404);
     // }
     // Generic error for other cases
@@ -532,22 +546,22 @@ async function updateTaskHandler(req: Request, id: TaskId): Promise<Response> {
   }
 }
 
-async function deleteTaskHandler(req: Request, id: TaskId): Promise<Response> {
+function deleteTaskHandler(_req: Request, id: TaskId): Response {
   const success = taskService.deleteTask(id);
   if (!success) {
     return jsonErrorResponse("Task not found or could not be deleted.", 404);
   }
-  const headers = { 
+  const headers = {
     ...DEFAULT_CORS_HEADERS,
-    "HX-Trigger": "show-toast-task-deleted" 
+    "HX-Trigger": "show-toast-task-deleted"
   };
   return new Response(null, { // Success, no content
-    status: 204, 
+    status: 204,
     headers
   });
 }
 
-async function getTaskEditFormHandler(req: Request, id: TaskId): Promise<Response> {
+function getTaskEditFormHandler(_req: Request, id: TaskId): Response {
   const task = taskService.getTaskById(id);
   if (!task) {
     return htmlErrorResponse("Task not found.", 404);
@@ -557,15 +571,15 @@ async function getTaskEditFormHandler(req: Request, id: TaskId): Promise<Respons
   });
 }
 
-async function toggleTaskHandler(req: Request, id: TaskId): Promise<Response> {
+function toggleTaskHandler(_req: Request, id: TaskId): Response {
   const updatedTask = taskService.toggleTaskCompletion(id);
   if (!updatedTask) {
     return htmlErrorResponse("Task not found.", 404);
   }
-  const headers = { 
-    ...DEFAULT_CORS_HEADERS, 
+  const headers = {
+    ...DEFAULT_CORS_HEADERS,
     "Content-Type": "text/html",
-    "HX-Trigger": "show-toast-task-toggled" 
+    "HX-Trigger": "show-toast-task-toggled"
   };
   return new Response(taskToHtml(updatedTask), { headers });
 }

@@ -3,6 +3,7 @@
     "start": "deno run --allow-net --allow-read server.ts"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/html": "jsr:@std/html@1"
   }
 }

@@ -10,7 +10,7 @@
   <script src="https://unpkg.com/htmx.org@1.9.9"></script>
 
   <!-- Shoelace Web Components -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace.js"></script>
 
   <style>
@@ -79,11 +79,14 @@
 
     /* Style for refresh spinner when HTMX request is active */
     .refresh-spinner.htmx-indicator {
-      display: inline-flex !important; /* Or inline-block, adjust as needed */
+      display: inline-flex !important;
+      /* Or inline-block, adjust as needed */
       align-items: center;
       vertical-align: middle;
     }
-    .refresh-spinner { /* Default hidden state */
+
+    .refresh-spinner {
+      /* Default hidden state */
       display: none;
     }
   </style>
@@ -108,14 +111,14 @@
           <h2>Add New Task</h2>
         </div>
 
-        <sl-form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="sl-submit"
+        <form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="submit"
           hx-indicator=".spinner-container">
 
           <sl-input name="title" required placeholder="What needs to be done?"></sl-input>
 
           <sl-textarea name="description" placeholder="Add details (optional)"></sl-textarea>
 
-          <sl-select name="priority" placeholder="Select priority">
+          <sl-select name="priority" placeholder="Select priority" value="medium">
             <sl-option value="low">Low</sl-option>
             <sl-option value="medium">Medium</sl-option>
             <sl-option value="high">High</sl-option>
@@ -129,7 +132,7 @@
             <sl-button type="reset" variant="neutral">Clear</sl-button>
             <sl-button type="submit" variant="primary">Add Task</sl-button>
           </div>
-        </sl-form>
+        </form>
       </sl-card>
     </section>
 
@@ -173,17 +176,17 @@
         </div>
 
         <!-- Empty state (This is now primarily handled by server response, but can be a fallback or example) -->
-        <!-- 
+        <!--
           The server's getTasksHandler returns an <sl-alert> if no tasks are found.
           If the initial hx-get on #task-list fails or if there's a desire for a purely client-side
           empty state before the first load, this could be styled to appear, but it's largely redundant now.
           For now, keeping it commented or removed is fine if the server handles the empty state.
         -->
-        <!-- 
+        <!--
         <sl-alert variant="neutral" open style="display: none;">
           <sl-icon slot="icon" name="info-circle"></sl-icon>
           No tasks found. Add your first task above.
-        </sl-alert> 
+        </sl-alert>
         -->
       </sl-card>
     </section>
@@ -194,20 +197,57 @@
   <script>
     // Optional minimal JavaScript for enhancing the HTMX experience
     document.addEventListener('DOMContentLoaded', () => {
+
+      // Custom form serialization for Shoelace components
+      document.body.addEventListener('htmx:configRequest', function (evt) {
+        if (evt.detail.elt.matches('form.task-form')) {
+          const form = evt.detail.elt;
+          const formData = new FormData();
+
+          // Get values from Shoelace components
+          const titleInput = form.querySelector('sl-input[name="title"]');
+          const descriptionInput = form.querySelector('sl-textarea[name="description"]');
+          const prioritySelect = form.querySelector('sl-select[name="priority"]');
+
+          if (titleInput) formData.append('title', titleInput.value || '');
+          if (descriptionInput) formData.append('description', descriptionInput.value || '');
+          if (prioritySelect) formData.append('priority', prioritySelect.value || 'medium');
+
+          // Override the parameters with our custom form data
+          evt.detail.parameters = {};
+          for (const [key, value] of formData.entries()) {
+            evt.detail.parameters[key] = value;
+          }
+        }
+      });
+
+      // Reset form after successful submission
+      document.body.addEventListener('htmx:afterRequest', function (evt) {
+        if (evt.detail.elt.matches('form.task-form') && evt.detail.xhr.status === 200) {
+          const form = evt.detail.elt;
+          const titleInput = form.querySelector('sl-input[name="title"]');
+          const descriptionInput = form.querySelector('sl-textarea[name="description"]');
+          const prioritySelect = form.querySelector('sl-select[name="priority"]');
+
+          if (titleInput) titleInput.value = '';
+          if (descriptionInput) descriptionInput.value = '';
+          if (prioritySelect) prioritySelect.value = 'medium';
+        }
+      });
       // Generic error handler for HTMX requests (optional, but good for debugging)
       document.body.addEventListener('htmx:responseError', function (evt) {
         console.error("HTMX Response Error:", evt.detail.error, "From:", evt.detail.xhr);
         // Optionally show a generic error toast for network/server errors not handled by specific HTML responses
         // Ensure this doesn't conflict with HTML error responses from the server.
         if (!evt.detail.xhr.responseText.includes('<sl-alert')) { // Avoid double-toasting if server sent an HTML error
-            const errorToast = Object.assign(document.createElement('sl-toast'), {
-                variant: 'danger',
-                duration: 5000,
-                closable: true,
-                innerText: `Request failed: ${evt.detail.error || evt.detail.xhr.statusText || 'Unknown error'}`
-            });
-            document.body.appendChild(errorToast);
-            errorToast.show();
+          const errorToast = Object.assign(document.createElement('sl-toast'), {
+            variant: 'danger',
+            duration: 5000,
+            closable: true,
+            innerText: `Request failed: ${evt.detail.error || evt.detail.xhr.statusText || 'Unknown error'}`
+          });
+          document.body.appendChild(errorToast);
+          errorToast.show();
         }
       });
 
