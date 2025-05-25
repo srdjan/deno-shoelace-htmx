@@ -76,6 +76,16 @@
       text-decoration: line-through;
       opacity: 0.7;
     }
+
+    /* Style for refresh spinner when HTMX request is active */
+    .refresh-spinner.htmx-indicator {
+      display: inline-flex !important; /* Or inline-block, adjust as needed */
+      align-items: center;
+      vertical-align: middle;
+    }
+    .refresh-spinner { /* Default hidden state */
+      display: none;
+    }
   </style>
 </head>
 
@@ -98,7 +108,7 @@
           <h2>Add New Task</h2>
         </div>
 
-        <form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="submit"
+        <sl-form class="task-form" hx-post="/api/tasks" hx-target="#task-list" hx-swap="beforeend" hx-trigger="sl-submit"
           hx-indicator=".spinner-container">
 
           <sl-input name="title" required placeholder="What needs to be done?"></sl-input>
@@ -119,7 +129,7 @@
             <sl-button type="reset" variant="neutral">Clear</sl-button>
             <sl-button type="submit" variant="primary">Add Task</sl-button>
           </div>
-        </form>
+        </sl-form>
       </sl-card>
     </section>
 
@@ -133,8 +143,8 @@
               hx-indicator=".refresh-spinner">
               <sl-icon slot="prefix" name="arrow-clockwise"></sl-icon>
               Refresh
-              <span class="refresh-spinner" style="display: none;">
-                <sl-spinner style="font-size: 1em;"></sl-spinner>
+              <span class="refresh-spinner">
+                <sl-spinner style="font-size: 1em; --stroke-width: 2px;"></sl-spinner>
               </span>
             </sl-button>
           </div>
@@ -157,173 +167,87 @@
           </sl-button-group>
         </div>
 
-        <!-- Tasks will be loaded here -->
-        <div id="task-list" class="task-list">
-          <!-- Task Item Example (this would be returned from the server) -->
-          <div id="task-1" class="task-item">
-            <div>
-              <sl-checkbox hx-put="/api/tasks/1/toggle" hx-trigger="change" hx-swap="outerHTML" hx-target="#task-1">
-                <span>Complete the project setup</span>
-              </sl-checkbox>
-              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
-                Initial setup for the Shoelace and HTMX demo
-              </div>
-            </div>
-
-            <div>
-              <sl-badge variant="primary">Medium</sl-badge>
-              <sl-dropdown>
-                <sl-button slot="trigger" size="small" variant="neutral" circle>
-                  <sl-icon name="three-dots-vertical"></sl-icon>
-                </sl-button>
-                <sl-menu>
-                  <sl-menu-item hx-get="/api/tasks/1/edit" hx-target="#task-1" hx-swap="outerHTML">
-                    <sl-icon slot="prefix" name="pencil"></sl-icon>
-                    Edit
-                  </sl-menu-item>
-                  <sl-menu-item hx-delete="/api/tasks/1" hx-target="#task-1" hx-swap="outerHTML"
-                    hx-confirm="Are you sure you want to delete this task?">
-                    <sl-icon slot="prefix" name="trash"></sl-icon>
-                    Delete
-                  </sl-menu-item>
-                </sl-menu>
-              </sl-dropdown>
-            </div>
-          </div>
-
-          <!-- Completed Task Example -->
-          <div id="task-2" class="task-item">
-            <div>
-              <sl-checkbox checked hx-put="/api/tasks/2/toggle" hx-trigger="change" hx-swap="outerHTML"
-                hx-target="#task-2">
-                <span class="task-complete">Research Web Components</span>
-              </sl-checkbox>
-              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
-                Look into Shoelace and other component libraries
-              </div>
-            </div>
-
-            <div>
-              <sl-badge variant="success">Low</sl-badge>
-              <sl-dropdown>
-                <sl-button slot="trigger" size="small" variant="neutral" circle>
-                  <sl-icon name="three-dots-vertical"></sl-icon>
-                </sl-button>
-                <sl-menu>
-                  <sl-menu-item hx-get="/api/tasks/2/edit" hx-target="#task-2" hx-swap="outerHTML">
-                    <sl-icon slot="prefix" name="pencil"></sl-icon>
-                    Edit
-                  </sl-menu-item>
-                  <sl-menu-item hx-delete="/api/tasks/2" hx-target="#task-2" hx-swap="outerHTML"
-                    hx-confirm="Are you sure you want to delete this task?">
-                    <sl-icon slot="prefix" name="trash"></sl-icon>
-                    Delete
-                  </sl-menu-item>
-                </sl-menu>
-              </sl-dropdown>
-            </div>
-          </div>
-
-          <!-- High Priority Task Example -->
-          <div id="task-3" class="task-item">
-            <div>
-              <sl-checkbox hx-put="/api/tasks/3/toggle" hx-trigger="change" hx-swap="outerHTML" hx-target="#task-3">
-                <span>Implement server endpoints</span>
-              </sl-checkbox>
-              <div style="margin-left: 1.75rem; color: var(--sl-color-neutral-600); font-size: 0.875rem;">
-                Create the API for task management
-              </div>
-            </div>
-
-            <div>
-              <sl-badge variant="danger">High</sl-badge>
-              <sl-dropdown>
-                <sl-button slot="trigger" size="small" variant="neutral" circle>
-                  <sl-icon name="three-dots-vertical"></sl-icon>
-                </sl-button>
-                <sl-menu>
-                  <sl-menu-item hx-get="/api/tasks/3/edit" hx-target="#task-3" hx-swap="outerHTML">
-                    <sl-icon slot="prefix" name="pencil"></sl-icon>
-                    Edit
-                  </sl-menu-item>
-                  <sl-menu-item hx-delete="/api/tasks/3" hx-target="#task-3" hx-swap="outerHTML"
-                    hx-confirm="Are you sure you want to delete this task?">
-                    <sl-icon slot="prefix" name="trash"></sl-icon>
-                    Delete
-                  </sl-menu-item>
-                </sl-menu>
-              </sl-dropdown>
-            </div>
-          </div>
+        <!-- Tasks will be loaded here by HTMX. Initial example items removed. -->
+        <div id="task-list" class="task-list" hx-get="/api/tasks" hx-trigger="load" hx-indicator=".refresh-spinner">
+          <!-- Server will populate this or return an empty state message if no tasks -->
         </div>
 
-        <!-- Empty state -->
+        <!-- Empty state (This is now primarily handled by server response, but can be a fallback or example) -->
+        <!-- 
+          The server's getTasksHandler returns an <sl-alert> if no tasks are found.
+          If the initial hx-get on #task-list fails or if there's a desire for a purely client-side
+          empty state before the first load, this could be styled to appear, but it's largely redundant now.
+          For now, keeping it commented or removed is fine if the server handles the empty state.
+        -->
+        <!-- 
         <sl-alert variant="neutral" open style="display: none;">
           <sl-icon slot="icon" name="info-circle"></sl-icon>
           No tasks found. Add your first task above.
-        </sl-alert>
+        </sl-alert> 
+        -->
       </sl-card>
     </section>
   </div>
 
-  <!-- Task Edit Dialog Template (would be returned from server) -->
-  <template id="edit-form-template">
-    <form class="task-form edit-task-form" hx-put="/api/tasks/{id}" hx-target="#{id}" hx-swap="outerHTML">
-
-      <sl-input name="title" required placeholder="Task title" value="{title}"></sl-input>
-
-      <sl-textarea name="description" placeholder="Description" value="{description}"></sl-textarea>
-
-      <sl-select name="priority" placeholder="Select priority" value="{priority}">
-        <sl-option value="low">Low</sl-option>
-        <sl-option value="medium">Medium</sl-option>
-        <sl-option value="high">High</sl-option>
-      </sl-select>
-
-      <div class="form-actions">
-        <sl-button type="button" variant="neutral" hx-get="/api/tasks/{id}" hx-target="#{id}" hx-swap="outerHTML">
-          Cancel
-        </sl-button>
-        <sl-button type="submit" variant="primary">Save</sl-button>
-      </div>
-    </form>
-  </template>
+  <!-- Task Edit Dialog Template is removed as it's unused. Edit forms are rendered server-side. -->
 
   <script>
     // Optional minimal JavaScript for enhancing the HTMX experience
     document.addEventListener('DOMContentLoaded', () => {
-      // Add event listener for HTMX after request events
-      document.body.addEventListener('htmx:afterRequest', (event) => {
-        // Show toast notifications on successful actions
-        if (event.detail.successful) {
-          // Create a toast notification
-          const toast = Object.assign(document.createElement('sl-toast'), {
-            variant: 'primary',
-            duration: 3000,
-            closable: true
-          });
-
-          // Set toast content based on the request
-          const path = event.detail.pathInfo.requestPath;
-
-          if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'POST') {
-            toast.innerText = 'Task added successfully';
-          } else if (path.includes('/toggle')) {
-            toast.innerText = 'Task status updated';
-          } else if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'PUT') {
-            toast.innerText = 'Task updated successfully';
-          } else if (path.includes('/api/tasks') && event.detail.requestConfig.method === 'DELETE') {
-            toast.variant = 'danger';
-            toast.innerText = 'Task deleted';
-          }
-
-          // Show the toast
-          if (toast.innerText) {
-            document.body.appendChild(toast);
-            toast.show();
-          }
+      // Generic error handler for HTMX requests (optional, but good for debugging)
+      document.body.addEventListener('htmx:responseError', function (evt) {
+        console.error("HTMX Response Error:", evt.detail.error, "From:", evt.detail.xhr);
+        // Optionally show a generic error toast for network/server errors not handled by specific HTML responses
+        // Ensure this doesn't conflict with HTML error responses from the server.
+        if (!evt.detail.xhr.responseText.includes('<sl-alert')) { // Avoid double-toasting if server sent an HTML error
+            const errorToast = Object.assign(document.createElement('sl-toast'), {
+                variant: 'danger',
+                duration: 5000,
+                closable: true,
+                innerText: `Request failed: ${evt.detail.error || evt.detail.xhr.statusText || 'Unknown error'}`
+            });
+            document.body.appendChild(errorToast);
+            errorToast.show();
         }
       });
+
+      // Function to create and show a toast
+      function showToast(message, variant = 'primary', duration = 3000) {
+        const toast = Object.assign(document.createElement('sl-toast'), {
+          variant: variant,
+          duration: duration,
+          closable: true,
+          innerHTML: message // innerHTML to allow icons or other HTML in message if needed
+        });
+        document.body.appendChild(toast);
+        // It's important to remove the toast from the DOM after it hides to prevent buildup
+        toast.addEventListener('sl-after-hide', () => {
+          toast.remove();
+        });
+        toast.show();
+      }
+
+      // Event listeners for server-sent HX-Trigger events
+      document.body.addEventListener('show-toast-task-created', () => {
+        showToast('Task added successfully!', 'success'); // Changed variant to success for create
+      });
+
+      document.body.addEventListener('show-toast-task-updated', () => {
+        showToast('Task updated successfully.', 'primary');
+      });
+
+      document.body.addEventListener('show-toast-task-toggled', () => {
+        showToast('Task status updated.', 'neutral'); // Changed variant to neutral
+      });
+
+      document.body.addEventListener('show-toast-task-deleted', () => {
+        showToast('Task deleted.', 'danger');
+      });
+
+      // The old htmx:afterRequest listener is removed as per instructions
+      // document.body.addEventListener('htmx:afterRequest', (event) => {
+      //   // ... old logic was here ...
+      // });
     });
   </script>
 </body>
